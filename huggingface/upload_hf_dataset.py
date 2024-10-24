@@ -1,9 +1,10 @@
 from pathlib import Path
 import glob
 import os
+from typing import Optional
 
 from datasets import Dataset, DatasetDict, Image
-from huggingface_hub import login
+from huggingface_hub import login, upload_file
 
 def createHfDataset(images_path_ : str, labels_path_ : str):
     """ Create an Huggingface Dataset object from paths to images and labels. """
@@ -23,12 +24,13 @@ def createHfDataset(images_path_ : str, labels_path_ : str):
 
     return dataset
 
-def uploadSegmentationDatasetToHf(hf_token_          : str,
-                                  dataset_name_      : str,
-                                  train_images_path_ : str,
-                                  train_labels_path_ : str,
-                                  valid_images_path_ : str,
-                                  valid_labels_path_ : str):
+def uploadSegmentationDatasetToHf(hf_token_           : str,
+                                  dataset_name_       : str,
+                                  train_images_path_  : str,
+                                  train_labels_path_  : str,
+                                  valid_images_path_  : str,
+                                  valid_labels_path_  : str,
+                                  dataset_card_fpath_ : Optional[str] = None):
     """ Upload a Semantic Segmentation dataset to Huggingface Hub. """
 
     ## Login to Huggingface
@@ -48,6 +50,17 @@ def uploadSegmentationDatasetToHf(hf_token_          : str,
     ## Push to hub
     dataset.push_to_hub(dataset_name_, private=True)
 
+    ## Create Dataset card
+    if dataset_card_fpath_ is not None:
+        assert(Path(dataset_card_fpath_).exists())
+
+        upload_file(path_or_fileobj=dataset_card_fpath_,
+                    path_in_repo="README.md",
+                    repo_id=dataset_name_,
+                    token=hf_token_,
+                    repo_type="dataset",
+                    commit_message="Test Readme code.")
+
     return
 
 ##### ----- Test Script ----- #####
@@ -59,7 +72,8 @@ def test():
         train_images_path_="/home/andrea/raymond/pallet_detection_datasets/pallet_detection_dataset_v0.1/rgb/train/",
         train_labels_path_="/home/andrea/raymond/pallet_detection_datasets/pallet_detection_dataset_v0.1/segmentation/train/",
         valid_images_path_="/home/andrea/raymond/pallet_detection_datasets/pallet_detection_dataset_v0.1/rgb/val/",
-        valid_labels_path_="/home/andrea/raymond/pallet_detection_datasets/pallet_detection_dataset_v0.1/segmentation/val/"
+        valid_labels_path_="/home/andrea/raymond/pallet_detection_datasets/pallet_detection_dataset_v0.1/segmentation/val/",
+        dataset_card_fpath_="/home/andrea/raymond/pallet_detection_datasets/pallet_detection_dataset_v0.1/README.md"
     )
 
 if __name__ == "__main__":
