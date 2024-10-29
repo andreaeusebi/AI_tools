@@ -1,8 +1,10 @@
+## Standard modules
 from pathlib import Path
 import glob
 import os
 from typing import Optional
 
+## Huggingface modules
 from datasets import Dataset, DatasetDict, Image
 from huggingface_hub import login, upload_file
 
@@ -45,7 +47,7 @@ def uploadSegmentationDatasetToHf(hf_token_           : str,
     
     ## Create DatasetDict
     dataset = DatasetDict( {"train": train_dataset,
-                            "validation": valid_dataset} )
+                            "valid": valid_dataset} )
     
     ## Push to hub
     dataset.push_to_hub(dataset_name_, private=True)
