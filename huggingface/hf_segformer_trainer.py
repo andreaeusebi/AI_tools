@@ -6,6 +6,7 @@ import torch
 from torch import nn
 import cv2
 import copy
+from typing import Dict, Any
 
 ## Custom modules
 import py_utils.log
@@ -16,7 +17,8 @@ from datasets import load_dataset, load_dataset_builder
 from transformers import (SegformerImageProcessor,
                           SegformerForSemanticSegmentation,
                           TrainingArguments,
-                          Trainer)
+                          Trainer,
+                          BatchFeature)
 import evaluate
 from transformers.trainer import EvalPrediction
 
@@ -137,18 +139,12 @@ class HfSegformerTrainer:
         self.train_augm = train_augm_
         self.valid_augm = valid_augm_
 
-        self.logger.debug(f"getitem: {self.train_ds[0]}")
-
         ## Retrieve id and labels of the dataset (assuming there is a id2label.json file)
-        ##try:
         self.id2label = json.load(open(hf_hub_download(repo_id=dataset_name_,
-                                                           filename="id2label.json",
-                                                           repo_type="dataset"), "r"))
+                                                       filename="id2label.json",
+                                                       repo_type="dataset"), "r"))
         self.id2label = {int(k): v for k, v in self.id2label.items()}
         label2id = {v: k for k, v in self.id2label.items()}
-        #except:
-        #    self.logger.error("No 'id2label.json' file found inside the dataset!")
-        #    exit()
 
         self.logger.debug(f"self.id2label: {self.id2label}")
 
@@ -179,14 +175,14 @@ class HfSegformerTrainer:
         self.trainer.train()
 
     def trainTransform(self,
-                       batch_ : dict):
+                       batch_ : dict) -> BatchFeature:
         """ On the fly preparation of a batch of train data as expected by Segformer model. """
 
         return self.batchTransform(batch_=batch_,
                                    augm_pipeline_=self.train_augm)
         
     def validTransform(self,
-                       batch_ : dict):
+                       batch_ : dict) -> BatchFeature:
         """ On the fly preparation of a batch of validation data as expected by Segformer model. """
 
         return self.batchTransform(batch_=batch_,
@@ -194,7 +190,7 @@ class HfSegformerTrainer:
     
     def batchTransform(self,
                        batch_ : dict,
-                       augm_pipeline_ : Albu.Compose):
+                       augm_pipeline_ : Albu.Compose) -> BatchFeature:
         """ Apply augmentations and Segformer processor transformations to the given batch. """
 
         self.logger.debug(f"Batch: {batch_}")
@@ -218,7 +214,7 @@ class HfSegformerTrainer:
 
         return segformer_inputs
     
-    def computeMetrics(self, eval_pred_ : EvalPrediction):
+    def computeMetrics(self, eval_pred_ : EvalPrediction) -> Dict[str, Any]:
         """ Compute evaluation metrics for given predictions data. """
         
         with torch.no_grad():
