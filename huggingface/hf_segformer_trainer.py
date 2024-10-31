@@ -128,8 +128,8 @@ class HfSegformerTrainer:
         self.segformer_processor = segformer_proc_
         
         ## Set transformation pipelines for each dataset split
-        self.train_ds.set_transform(trainTransformExt)
-        self.valid_ds.set_transform(validTransformExt)
+        self.train_ds.set_transform(self.trainTransform)
+        self.valid_ds.set_transform(self.validTransform)
 
         self.logger.debug(f"Train dataset format: {self.train_ds.format}")
 
@@ -251,7 +251,11 @@ class HfSegformerTrainer:
         )
 
         return mean_iou_results
-
+    
+    def __deepcopy__(self, memodict={}):
+        cpyobj = type(self) 
+        cpyobj = self
+        return cpyobj
 
 ##### ----- Test Script ----- #####
 def test():
@@ -267,7 +271,7 @@ def test():
                                                do_normalize=True,
                                                do_reduce_labels=True)
     TRAINING_ARGS    = TrainingArguments(
-        output_dir="241029_TEST",
+        output_dir="241031_TEST",
         learning_rate=0.00006,
         num_train_epochs=10,
         per_device_train_batch_size=2,
