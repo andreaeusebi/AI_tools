@@ -121,8 +121,8 @@ class HfSegformerTrainer:
         self.train_ds = load_dataset(dataset_name_, split="train")
         self.valid_ds = load_dataset(dataset_name_, split="valid")
 
-        self.logger.debug(f"Train dataset: {self.train_ds}")
-        self.logger.debug(f"Valid dataset: {self.valid_ds}")
+        self.logger.info(f"Train dataset: {self.train_ds}")
+        self.logger.info(f"Valid dataset: {self.valid_ds}")
 
         self.logger.debug(f"Image: {self.train_ds[0]}")
 
@@ -146,7 +146,7 @@ class HfSegformerTrainer:
         self.id2label = {int(k): v for k, v in self.id2label.items()}
         label2id = {v: k for k, v in self.id2label.items()}
 
-        self.logger.debug(f"self.id2label: {self.id2label}")
+        self.logger.info(f"self.id2label: {self.id2label}")
 
         # Index to be ignored by evaluation metrics (not suggested to change)
         self.IGNORE_IDX = 255
@@ -192,8 +192,6 @@ class HfSegformerTrainer:
                        batch_ : dict,
                        augm_pipeline_ : Albu.Compose) -> BatchFeature:
         """ Apply augmentations and Segformer processor transformations to the given batch. """
-
-        self.logger.debug(f"Batch: {batch_}")
 
         assert(len(batch_["pixel_values"]) == len(batch_["label"]))
 
@@ -300,7 +298,7 @@ def test():
                                     valid_augm_=AUGM,
                                     segformer_proc_=SEG_PROCESSOR,
                                     training_args_=TRAINING_ARGS,
-                                    log_level_=logging.DEBUG)
+                                    log_level_=logging.INFO)
     
     logger.info("HfSegformerTrainer correctly initialized! Running training now...")
 
