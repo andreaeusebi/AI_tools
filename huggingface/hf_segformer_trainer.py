@@ -5,7 +5,6 @@ import json
 import torch
 from torch import nn
 import cv2
-import copy
 from typing import Dict, Any
 
 ## Custom modules
@@ -111,15 +110,20 @@ class HfSegformerTrainer:
         # Login to Huggingface
         login(hf_token_)
 
+        ## Save data
+        self.dataset_name     = dataset_name_
+        self.pretrained_model = pretrained_model_
+        self.out_model_name   = training_args_.hub_model_id
+
         ## Retrieve dataset informations (optional)
-        ds_builder = load_dataset_builder(dataset_name_)
+        ds_builder = load_dataset_builder(self.dataset_name)
 
         self.logger.debug(f"ds_builder description: {ds_builder.info.description}")
         self.logger.debug(f"ds_builder features: {ds_builder.info.features}")
 
         ## Load dataset splits
-        self.train_ds = load_dataset(dataset_name_, split="train")
-        self.valid_ds = load_dataset(dataset_name_, split="valid")
+        self.train_ds = load_dataset(self.dataset_name, split="train")
+        self.valid_ds = load_dataset(self.dataset_name, split="valid")
 
         self.logger.info(f"Train dataset: {self.train_ds}")
         self.logger.info(f"Valid dataset: {self.valid_ds}")
@@ -140,7 +144,7 @@ class HfSegformerTrainer:
         self.valid_augm = valid_augm_
 
         ## Retrieve id and labels of the dataset (assuming there is a id2label.json file)
-        self.id2label = json.load(open(hf_hub_download(repo_id=dataset_name_,
+        self.id2label = json.load(open(hf_hub_download(repo_id=self.dataset_name,
                                                        filename="id2label.json",
                                                        repo_type="dataset"), "r"))
         self.id2label = {int(k): v for k, v in self.id2label.items()}
@@ -153,7 +157,7 @@ class HfSegformerTrainer:
 
         ## Segformer model instantiation
         self.model = SegformerForSemanticSegmentation.from_pretrained(
-            pretrained_model_name_or_path=pretrained_model_,
+            pretrained_model_name_or_path=self.pretrained_model,
             id2label=self.id2label,
             label2id=label2id
         )
@@ -173,6 +177,22 @@ class HfSegformerTrainer:
     def train(self) -> None:
         """ Run training pipeline. """
         self.trainer.train()
+
+    def uploadResultstoHfHub(self):
+        """ Upload Training Results to HuggingFace Hub. """
+
+        self.logger.debug("Publishing results to Huggingface Hub...")
+
+        kwargs = {
+            "tags": ["vision", "image-segmentation"],
+            "finetuned_from": self.pretrained_model,
+            "dataset": self.dataset_name,
+        }
+
+        self.segformer_processor.push_to_hub(self.out_model_name, private=True)
+        self.trainer.push_to_hub(**kwargs)
+
+        self.logger.info("Training results saved to Huggingface Hub!")
 
     def trainTransform(self,
                        batch_ : dict) -> BatchFeature:
@@ -256,6 +276,7 @@ def test():
     HF_TOKEN         = ""
     HF_DATASET       = "eusandre95/test_segmentation"
     PRETRAINED_MODEL = "nvidia/mit-b0"
+    OUT_MODEL_NAME   = "241031_TEST_2"
     AUGM             = Albu.Compose([ Albu.Resize(128,
                                                   256,
                                                   interpolation=cv2.INTER_AREA,
@@ -265,7 +286,7 @@ def test():
                                                do_normalize=True,
                                                do_reduce_labels=True)
     TRAINING_ARGS    = TrainingArguments(
-        output_dir="241031_TEST",
+        output_dir=OUT_MODEL_NAME,
         learning_rate=0.00006,
         num_train_epochs=10,
         per_device_train_batch_size=2,
@@ -279,7 +300,7 @@ def test():
         eval_accumulation_steps=5,
         load_best_model_at_end=True,
         push_to_hub=True,
-        hub_model_id="241028_TEST",
+        hub_model_id=OUT_MODEL_NAME,
         hub_strategy="every_save",
         hub_private_repo=True
     )
@@ -303,6 +324,8 @@ def test():
     logger.info("HfSegformerTrainer correctly initialized! Running training now...")
 
     hf_trainer.train()
+
+    hf_trainer.uploadResultstoHfHub()
 
     logger.info("Test script completed!")
 
