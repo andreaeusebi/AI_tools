@@ -28,19 +28,41 @@ def batchTransform(batch               : dict,
                    augm_pipeline       : Albu.Compose,
                    segformer_processor : SegformerImageProcessor) -> BatchFeature:
     """
-    Transformation function applying augmentations and preprocessing to a given batch.
+    Applies augmentations and preprocessing to a given batch of images and labels.
+
+    This function takes a batch containing pixel values and their corresponding labels, 
+    applies the specified augmentation pipeline, and processes the images to be suitable 
+    for input into a Segformer model. The function ensures that the input batch is properly 
+    formatted and raises errors if the batch structure is invalid.
 
     Args:
-        batch (dict): A batch containing pixel values and labels.
-        augm_pipeline (Albu.Compose): Augmentation pipeline to apply.
-        segformer_processor (SegformerImageProcessor): Processor object for preprocessing
-            the image data.
+        batch (dict): A dictionary containing the following keys:
+            - 'pixel_values' (List[Image]): A list of PIL images representing the input data.
+            - 'label' (List[Image]): A list of PIL images representing the ground truth labels.
+        augm_pipeline (Albu.Compose): An Albumentations pipeline for applying augmentations 
+            to the images and masks.
+        segformer_processor (SegformerImageProcessor): A processor object for preprocessing 
+            the images and labels according to the requirements of the Segformer model.
 
     Returns:
-        BatchFeature: A dictionary containing the transformed images and labels.
+        BatchFeature: A dictionary containing the transformed images and labels, formatted 
+        as expected by the Segformer model.
+
+    Raises:
+        KeyError: If the batch does not contain the required keys 'pixel_values' or 'label'.
+        ValueError: If the number of pixel values does not match the number of labels in the batch.
     """
+
+    ## Input data errors handling
+    required_keys = ["pixel_values", "label"]
+    for key in required_keys:
+        if key not in batch:
+            raise KeyError(f"Batch doesn't have key '{key}'")
     
-    assert(len(batch["pixel_values"]) == len(batch["label"]))
+    if len(batch["pixel_values"]) != len(batch["label"]):
+        raise ValueError(
+            "The number of pixel values does not match the number of labels in the batch."
+        )
 
     images = []
     labels = []
@@ -51,8 +73,6 @@ def batchTransform(batch               : dict,
                                   mask=np.array(label_pil))
         images.append(augmented["image"])
         labels.append(augmented["mask"])
-
-    assert(len(images) == len(labels))
 
     # Complete preprocessing to provide data as expected by Segformer
     segformer_inputs = segformer_processor(images, labels)
@@ -249,7 +269,7 @@ class HfSegformerTrainer:
 ##### ----- Test Script ----- #####
 
 def test():
-    HF_TOKEN         = "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"
+    HF_TOKEN         = ""
     HF_DATASET       = "eusandre95/test_segmentation"
     PRETRAINED_MODEL = "nvidia/mit-b0"
     OUT_MODEL_NAME   = "241101_TEST"
