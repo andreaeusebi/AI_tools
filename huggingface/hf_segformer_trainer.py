@@ -24,61 +24,31 @@ from   transformers.trainer import EvalPrediction
 ## Albumentatios modules
 import albumentations as Albu
 
-# WARNING: To be deleted after being sure that class method versions
-#          are safe.
-def trainTransformExt(batch_ : dict):
+def batchTransform(batch               : dict,
+                   augm_pipeline       : Albu.Compose,
+                   segformer_processor : SegformerImageProcessor) -> BatchFeature:
+    """
+    Transformation function applying augmentations and preprocessing to a given batch.
 
-    assert(len(batch_["pixel_values"]) == len(batch_["label"]))
+    Args:
+        batch (dict): A batch containing pixel values and labels.
+        augm_pipeline (Albu.Compose): Augmentation pipeline to apply.
+        segformer_processor (SegformerImageProcessor): Processor object for preprocessing
+            the image data.
 
-    augm_pipeline_                = Albu.Compose([ Albu.Resize(128,
-                                                  256,
-                                                  interpolation=cv2.INTER_AREA,
-                                                  p=1.0) ])
+    Returns:
+        BatchFeature: A dictionary containing the transformed images and labels.
+    """
     
-    segformer_processor    = SegformerImageProcessor(do_resize=False,
-                                               do_rescale=True,
-                                               do_normalize=True,
-                                               do_reduce_labels=True)
+    assert(len(batch["pixel_values"]) == len(batch["label"]))
 
     images = []
     labels = []
 
     ## Parse and augments both images and labels
-    for (img_pil, label_pil) in zip(batch_["pixel_values"], batch_["label"]):
-        augmented = augm_pipeline_(image=np.array(img_pil.convert("RGB")),
-                                mask=np.array(label_pil))
-        images.append(augmented["image"])
-        labels.append(augmented["mask"])
-
-    assert(len(images) == len(labels))
-
-    # Complete preprocessing to provide data as expected by Segformer
-    segformer_inputs = segformer_processor(images, labels)
-
-    return segformer_inputs
-
-# WARNING: To be deleted after being sure that class method versions
-#          are safe.
-def validTransformExt(batch_ : dict):
-    assert(len(batch_["pixel_values"]) == len(batch_["label"]))
-
-    augm_pipeline_                = Albu.Compose([ Albu.Resize(128,
-                                                  256,
-                                                  interpolation=cv2.INTER_AREA,
-                                                  p=1.0) ])
-    
-    segformer_processor    = SegformerImageProcessor(do_resize=False,
-                                               do_rescale=True,
-                                               do_normalize=True,
-                                               do_reduce_labels=True)
-
-    images = []
-    labels = []
-
-    ## Parse and augments both images and labels
-    for (img_pil, label_pil) in zip(batch_["pixel_values"], batch_["label"]):
-        augmented = augm_pipeline_(image=np.array(img_pil.convert("RGB")),
-                                mask=np.array(label_pil))
+    for (img_pil, label_pil) in zip(batch["pixel_values"], batch["label"]):
+        augmented = augm_pipeline(image=np.array(img_pil.convert("RGB")),
+                                  mask=np.array(label_pil))
         images.append(augmented["image"])
         labels.append(augmented["mask"])
 
@@ -155,18 +125,22 @@ class HfSegformerTrainer:
 
         self.logger.debug(f"Image: {self.train_ds[0]}")
 
+        ## Augmentation pipelines (based on Albumentations)
+        self.train_augm = train_augm_
+        self.valid_augm = valid_augm_
+
         # Segformer Image processor
         self.segformer_processor = segformer_proc_
         
         ## Set transformation pipelines for each dataset split
-        self.train_ds.set_transform(self.trainTransform)
-        self.valid_ds.set_transform(self.validTransform)
+        self.train_ds.set_transform(
+            lambda batch: batchTransform(batch, self.train_augm, self.segformer_processor)
+        )
+        self.valid_ds.set_transform(
+            lambda batch: batchTransform(batch, self.valid_augm, self.segformer_processor)
+        )
 
         self.logger.debug(f"Train dataset format: {self.train_ds.format}")
-
-        ## Augmentation pipelines (based on Albumentations)
-        self.train_augm = train_augm_
-        self.valid_augm = valid_augm_
 
         ## Retrieve id and labels of the dataset (assuming there is a id2label.json file)
         self.id2label = json.load(open(hf_hub_download(repo_id=self.dataset_name,
@@ -226,69 +200,6 @@ class HfSegformerTrainer:
         self.trainer.push_to_hub(**kwargs)
 
         self.logger.info("Training results saved to Huggingface Hub!")
-
-    def trainTransform(self,
-                       batch_ : dict) -> BatchFeature:
-        """
-        Prepares a batch of training data for Segformer.
-
-        Args:
-            batch_ (dict): A dictionary containing a batch of training data.
-
-        Returns:
-            BatchFeature: The processed batch of features.
-        """
-
-        return self.batchTransform(batch_=batch_,
-                                   augm_pipeline_=self.train_augm)
-        
-    def validTransform(self,
-                       batch_ : dict) -> BatchFeature:
-        """
-        Prepares a batch of validation data for Segformer.
-
-        Args:
-            batch_ (dict): A dictionary containing a batch of validation data.
-
-        Returns:
-            BatchFeature: The processed batch of features.
-        """
-
-        return self.batchTransform(batch_=batch_,
-                                   augm_pipeline_=self.valid_augm)
-    
-    def batchTransform(self,
-                       batch_ : dict,
-                       augm_pipeline_ : Albu.Compose) -> BatchFeature:
-        """
-        Applies augmentations and transformations to a given batch.
-
-        Args:
-            batch_ (dict): A batch containing pixel values and labels.
-            augm_pipeline_ (Albu.Compose): Augmentation pipeline to apply.
-
-        Returns:
-            BatchFeature: A dictionary containing the transformed images and labels.
-        """
-
-        assert(len(batch_["pixel_values"]) == len(batch_["label"]))
-
-        images = []
-        labels = []
-
-        ## Parse and augments both images and labels
-        for (img_pil, label_pil) in zip(batch_["pixel_values"], batch_["label"]):
-            augmented = augm_pipeline_(image=np.array(img_pil.convert("RGB")),
-                                       mask=np.array(label_pil))
-            images.append(augmented["image"])
-            labels.append(augmented["mask"])
-
-        assert(len(images) == len(labels))
-
-        # Complete preprocessing to provide data as expected by Segformer
-        segformer_inputs = self.segformer_processor(images, labels)
-
-        return segformer_inputs
     
     def computeMetrics(self, eval_pred_ : EvalPrediction) -> Dict[str, Any]:
         """
@@ -334,31 +245,11 @@ class HfSegformerTrainer:
         )
 
         return mean_iou_results
-    
-    def __deepcopy__(self, memodict={}) -> "HfSegformerTrainer":
-        """
-        Overwite of deepcopy() for HfSegformerTrainer object.
-
-        This method doesn't perform a real deep copy but a simple shallow copy for now.
-        WARNING: If the original object is modified, those changes would also affect the
-                 "deep copied" version, which defeats the purpose of __deepcopy__.
-
-        Args:
-            memodict (dict, optional): Dictionary for tracking copied objects to handle 
-            recursive copies, default is an empty dictionary.
-
-        Returns:
-            HfSegformerTrainer: A new instance of `HfSegformerTrainer`.
-        """
-
-        cpyobj = type(self) 
-        cpyobj = self
-        return cpyobj
 
 ##### ----- Test Script ----- #####
 
 def test():
-    HF_TOKEN         = ""
+    HF_TOKEN         = "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"
     HF_DATASET       = "eusandre95/test_segmentation"
     PRETRAINED_MODEL = "nvidia/mit-b0"
     OUT_MODEL_NAME   = "241101_TEST"
