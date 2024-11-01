@@ -312,11 +312,13 @@ class HfSegformerTrainer:
                                                       align_corners=False).argmax(dim=1)
             pred_labels = logits_tensor.detach().cpu().numpy()
 
-            mean_iou_results = self.mean_iou_metric._compute(predictions=pred_labels,
-                                                             references=labels,
-                                                             num_labels=len(self.id2label),
-                                                             ignore_index=self.IGNORE_IDX,
-                                                             reduce_labels=False) # we've already reduced the labels ourselves
+            mean_iou_results = self.mean_iou_metric._compute(
+                predictions=pred_labels,
+                references=labels,
+                num_labels=len(self.id2label),
+                ignore_index=self.IGNORE_IDX,
+                reduce_labels=False # we've already reduced the labels ourselves
+            )
             
         # add per category metrics as individual key-value pairs
         per_category_accuracy = mean_iou_results.pop("per_category_accuracy").tolist()
@@ -338,6 +340,8 @@ class HfSegformerTrainer:
         Overwite of deepcopy() for HfSegformerTrainer object.
 
         This method doesn't perform a real deep copy but a simple shallow copy for now.
+        WARNING: If the original object is modified, those changes would also affect the
+                 "deep copied" version, which defeats the purpose of __deepcopy__.
 
         Args:
             memodict (dict, optional): Dictionary for tracking copied objects to handle 
@@ -357,7 +361,7 @@ def test():
     HF_TOKEN         = ""
     HF_DATASET       = "eusandre95/test_segmentation"
     PRETRAINED_MODEL = "nvidia/mit-b0"
-    OUT_MODEL_NAME   = "241031_TEST_2"
+    OUT_MODEL_NAME   = "241101_TEST"
     AUGM             = Albu.Compose([ Albu.Resize(128,
                                                   256,
                                                   interpolation=cv2.INTER_AREA,
