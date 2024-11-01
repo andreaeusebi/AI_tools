@@ -19,9 +19,9 @@ def createHfDataset(images_path_ : str, labels_path_ : str):
     images_paths = glob.glob(os.path.join(images_path_, "*"))
     labels_paths = glob.glob(os.path.join(labels_path_, "*"))
 
-    dataset = Dataset.from_dict( {"image": sorted(images_paths),
+    dataset = Dataset.from_dict( {"pixel_values": sorted(images_paths),
                                   "label": sorted(labels_paths)} )
-    dataset = dataset.cast_column("image", Image())
+    dataset = dataset.cast_column("pixel_values", Image())
     dataset = dataset.cast_column("label", Image())
 
     return dataset
@@ -69,7 +69,7 @@ def uploadSegmentationDatasetToHf(hf_token_           : str,
 
 def test():
     uploadSegmentationDatasetToHf(
-        hf_token_="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",
+        hf_token_="",
         dataset_name_="eusandre95/test_segmentation",
         train_images_path_="/home/andrea/raymond/pallet_detection_datasets/pallet_detection_dataset_v0.1/rgb/train/",
         train_labels_path_="/home/andrea/raymond/pallet_detection_datasets/pallet_detection_dataset_v0.1/segmentation/train/",
