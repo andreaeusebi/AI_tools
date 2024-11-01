@@ -24,6 +24,8 @@ from   transformers.trainer import EvalPrediction
 ## Albumentatios modules
 import albumentations as Albu
 
+# WARNING: To be deleted after being sure that class method versions
+#          are safe.
 def trainTransformExt(batch_ : dict):
 
     assert(len(batch_["pixel_values"]) == len(batch_["label"]))
@@ -54,7 +56,9 @@ def trainTransformExt(batch_ : dict):
     segformer_inputs = segformer_processor(images, labels)
 
     return segformer_inputs
-        
+
+# WARNING: To be deleted after being sure that class method versions
+#          are safe.
 def validTransformExt(batch_ : dict):
     assert(len(batch_["pixel_values"]) == len(batch_["label"]))
 
@@ -86,7 +90,13 @@ def validTransformExt(batch_ : dict):
     return segformer_inputs
 
 class HfSegformerTrainer:
-    """ Utility class providing a training interface for an Huggingface based Segformer model. """
+    """
+    Utility class providing a training interface for a Hugging Face-based Segformer model.
+
+    This class sets up and manages the training pipeline for a semantic segmentation model
+    using the Segformer architecture, including model instantiation, data augmentation, 
+    metric computation, and result uploads to the Hugging Face Hub.
+    """
 
     def __init__(self,
                  hf_token_         : str,
@@ -97,7 +107,22 @@ class HfSegformerTrainer:
                  segformer_proc_   : SegformerImageProcessor,
                  training_args_    : TrainingArguments,
                  log_level_        : int = logging.INFO) -> None:
-        """ Initialize a Segformer model and everything necessary to run the training. """
+        """
+        Initializes a Segformer model and related configurations for training.
+
+        Args:
+            hf_token_ (str): Hugging Face authentication token.
+            dataset_name_ (str): Name of the dataset to use for training.
+            pretrained_model_ (str): Name or path of the pretrained Segformer model.
+            train_augm_ (Albu.Compose): Augmentation pipeline for training dataset.
+            valid_augm_ (Albu.Compose): Augmentation pipeline for validation dataset.
+            segformer_proc_ (SegformerImageProcessor): Processor for input data transformations.
+            training_args_ (TrainingArguments): Training arguments and configuration.
+            log_level_ (int, optional): Logging level, default is `logging.INFO`.
+
+        Raises:
+            FileNotFoundError: If the Hugging Face authentication token is invalid.
+        """
 
         ## Logger setup
         self.logger = py_utils.log.getCustomLogger(logger_name_=__name__,
@@ -175,11 +200,19 @@ class HfSegformerTrainer:
         self.logger.debug("__init__() completed!")
 
     def train(self) -> None:
-        """ Run training pipeline. """
+        """
+        Runs the training pipeline for the Segformer model.
+        """
+
         self.trainer.train()
 
-    def uploadResultstoHfHub(self):
-        """ Upload Training Results to HuggingFace Hub. """
+    def uploadResultstoHfHub(self) -> None:
+        """
+        Uploads the training results and model to the Hugging Face Hub.
+
+        Notes:
+            The Segformer processor and trainer will both push their outputs to the Hub.
+        """
 
         self.logger.debug("Publishing results to Huggingface Hub...")
 
@@ -196,14 +229,30 @@ class HfSegformerTrainer:
 
     def trainTransform(self,
                        batch_ : dict) -> BatchFeature:
-        """ On the fly preparation of a batch of train data as expected by Segformer model. """
+        """
+        Prepares a batch of training data for Segformer.
+
+        Args:
+            batch_ (dict): A dictionary containing a batch of training data.
+
+        Returns:
+            BatchFeature: The processed batch of features.
+        """
 
         return self.batchTransform(batch_=batch_,
                                    augm_pipeline_=self.train_augm)
         
     def validTransform(self,
                        batch_ : dict) -> BatchFeature:
-        """ On the fly preparation of a batch of validation data as expected by Segformer model. """
+        """
+        Prepares a batch of validation data for Segformer.
+
+        Args:
+            batch_ (dict): A dictionary containing a batch of validation data.
+
+        Returns:
+            BatchFeature: The processed batch of features.
+        """
 
         return self.batchTransform(batch_=batch_,
                                    augm_pipeline_=self.valid_augm)
@@ -211,7 +260,16 @@ class HfSegformerTrainer:
     def batchTransform(self,
                        batch_ : dict,
                        augm_pipeline_ : Albu.Compose) -> BatchFeature:
-        """ Apply augmentations and Segformer processor transformations to the given batch. """
+        """
+        Applies augmentations and transformations to a given batch.
+
+        Args:
+            batch_ (dict): A batch containing pixel values and labels.
+            augm_pipeline_ (Albu.Compose): Augmentation pipeline to apply.
+
+        Returns:
+            BatchFeature: A dictionary containing the transformed images and labels.
+        """
 
         assert(len(batch_["pixel_values"]) == len(batch_["label"]))
 
@@ -233,7 +291,16 @@ class HfSegformerTrainer:
         return segformer_inputs
     
     def computeMetrics(self, eval_pred_ : EvalPrediction) -> Dict[str, Any]:
-        """ Compute evaluation metrics for given predictions data. """
+        """
+        Computes evaluation metrics for the predictions.
+
+        Args:
+            eval_pred_ (EvalPrediction): Object containing model predictions and labels.
+
+        Returns:
+            Dict[str, Any]: A dictionary with calculated metrics, including per-category accuracy
+            and IoU values.
+        """
         
         with torch.no_grad():
             logits, labels = eval_pred_
@@ -266,7 +333,20 @@ class HfSegformerTrainer:
 
         return mean_iou_results
     
-    def __deepcopy__(self, memodict={}):
+    def __deepcopy__(self, memodict={}) -> "HfSegformerTrainer":
+        """
+        Overwite of deepcopy() for HfSegformerTrainer object.
+
+        This method doesn't perform a real deep copy but a simple shallow copy for now.
+
+        Args:
+            memodict (dict, optional): Dictionary for tracking copied objects to handle 
+            recursive copies, default is an empty dictionary.
+
+        Returns:
+            HfSegformerTrainer: A new instance of `HfSegformerTrainer`.
+        """
+
         cpyobj = type(self) 
         cpyobj = self
         return cpyobj
