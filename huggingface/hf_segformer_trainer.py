@@ -1,25 +1,25 @@
 ## Standard modules
 import logging
-import numpy as np
+import numpy  as np
 import json
 import torch
-from torch import nn
+from   torch  import nn
 import cv2
-from typing import Dict, Any
+from   typing import Dict, Any
 
 ## Custom modules
 import py_utils.log
 
 ## Huggingface modules
 from huggingface_hub import login, hf_hub_download
-from datasets import load_dataset, load_dataset_builder
-from transformers import (SegformerImageProcessor,
-                          SegformerForSemanticSegmentation,
-                          TrainingArguments,
-                          Trainer,
-                          BatchFeature)
+from datasets        import load_dataset, load_dataset_builder
+from transformers    import (SegformerImageProcessor,
+                             SegformerForSemanticSegmentation,
+                             TrainingArguments,
+                             Trainer,
+                             BatchFeature)
 import evaluate
-from transformers.trainer import EvalPrediction
+from   transformers.trainer import EvalPrediction
 
 ## Albumentatios modules
 import albumentations as Albu
@@ -272,6 +272,7 @@ class HfSegformerTrainer:
         return cpyobj
 
 ##### ----- Test Script ----- #####
+
 def test():
     HF_TOKEN         = ""
     HF_DATASET       = "eusandre95/test_segmentation"
