@@ -16,7 +16,7 @@ from segments.utils import get_semantic_bitmap
 import matplotlib.pyplot as plt
 
 # Segments.ai API Key
-API_KEY           = "e6eb70a8f4cd51d900b5ca6a0fcbb504070b5307"
+API_KEY           = ""
 # Segments.ai Dataset ID (username/dataset name)
 DATASET_ID        = "andrea_eusebi/pallet_semantic_segmentation_loco"
 # Segments.ai release name of the given dataset
